@@ -42,6 +42,7 @@ textarea#script{width:100%;min-height:34vh;resize:vertical;background:var(--pane
 .group{display:grid;gap:14px}
 .group h2{font:700 12px var(--f-ui);letter-spacing:.09em;text-transform:uppercase;color:var(--dim);margin:0}
 .seg{display:grid;grid-template-columns:repeat(3,1fr);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
+.seg2{grid-template-columns:1fr 1fr}
 .seg button{border:0;background:transparent;border-radius:9px;padding:10px 6px;font:600 14px var(--f-ui);color:var(--dim)}
 .seg button[aria-pressed="true"]{background:var(--panel-2);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line)}
 .modeinfo{font-size:13.5px;color:var(--dim);margin:0}
@@ -80,9 +81,16 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
 .stage.mirror{transform:scaleX(-1)}
 .col{position:absolute;top:calc(var(--rl)*1%);height:calc(var(--bh)*1%);left:50%;width:calc(var(--w)*1%);transform:translateX(calc(-50% + var(--off)*1vw));background:rgb(0 0 0 / calc(var(--op)*1%));border-radius:18px;overflow:hidden;-webkit-backdrop-filter:blur(calc(var(--op)*.08px));backdrop-filter:blur(calc(var(--op)*.08px))}
 .view{position:absolute;inset:0 18px;-webkit-mask-image:linear-gradient(#000 78%,transparent);mask-image:linear-gradient(#000 78%,transparent)}
-.text{position:absolute;left:0;right:0;top:0;will-change:transform;font:400 var(--fs)/var(--lh) var(--f-read);color:var(--fg);text-shadow:0 1px 3px #0009;padding-bottom:110vh;overflow-wrap:break-word;hyphens:manual}
-.text p{margin:0 0 .55em}
-.text p.gap{height:.5em}
+.text{position:absolute;left:0;right:0;top:0;will-change:transform;font:400 var(--fs)/var(--lh) var(--f-read);color:var(--fg);text-shadow:0 1px 3px #0009;padding-bottom:110vh;overflow-wrap:normal;hyphens:manual}
+.ph{display:inline}
+.ph.pend::after{content:"";display:block;height:.55em}
+.frase .ph{display:block;margin-bottom:.45em;transition:opacity .2s}
+.frase .ph.pend::after{display:none}
+.frase .ph.past{visibility:hidden}
+.frase .ph.next{opacity:.5}
+.frase .ph.later{opacity:.22}
+.frase .mark{display:none}
+.frase .w.done{color:#ffffffa8}
 .w{transition:color .25s}
 .w.done{color:#ffffff5c}
 .w.cur{color:var(--fg);text-decoration:underline 3px var(--accent);text-underline-offset:.18em}
@@ -100,7 +108,7 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
 .recpill{color:var(--rec);display:flex;align-items:center;gap:6px}
 .recpill::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--rec);animation:blink 1s steps(2) infinite}
 @keyframes blink{50%{opacity:.2}}
-#cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);z-index:0;background:#000}
+#cam{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;transform:scaleX(-1);z-index:0;background:#000;max-width:none}
 .stage{z-index:1}
 
 .dock{position:absolute;left:0;right:0;bottom:0;z-index:6;padding:14px max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 14px) max(16px,env(safe-area-inset-left,0px));background:linear-gradient(transparent,#000e 30%);display:grid;gap:10px;justify-items:center}
@@ -143,6 +151,11 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
       <button type="button" data-mode="fixo">Fixo</button>
     </div>
     <p class="modeinfo" id="modeinfo"></p>
+    <div class="seg seg2" role="group" aria-label="Exibição">
+      <button type="button" data-view="frase">Frase a frase</button>
+      <button type="button" data-view="rolagem">Rolagem</button>
+    </div>
+    <div class="row" id="r-wpm"><label for="wpm">Ritmo da fala</label><output id="o-wpm"></output><input type="range" id="wpm" data-k="wpm" min="90" max="240" step="5"></div>
     <div class="row" id="r-speed"><label for="speed">Velocidade</label><output id="o-speed"></output><input type="range" id="speed" data-k="speed" min="10" max="160" step="2"></div>
     <div class="row" id="r-thresh"><label for="thresh">Sensibilidade do microfone</label><button class="btn" type="button" id="testmic">Testar</button>
       <input type="range" id="thresh" data-k="thresh" min="-70" max="-20" step="1">
@@ -237,7 +250,7 @@ A segunda é conversar com o cirurgião antes, e não durante.
 E a terceira é deixar a sala pronta para o pior cenário, mesmo quando tudo indica que vai ser tranquilo.
 
 Se isso fez sentido para você, salva esse vídeo e manda para aquele colega que vive correndo.`;
-const DEF={text:EXEMPLO,mode:'voz',speed:44,thresh:-46,width:52,offset:0,readline:7,boxh:40,op:45,font:32,lh:1.3,mirror:false,record:false,preview:true,countdown:true};
+const DEF={text:EXEMPLO,mode:'voz',speed:44,thresh:-46,width:52,offset:0,readline:7,boxh:40,op:45,view:'frase',wpm:150,font:32,lh:1.3,mirror:false,record:false,preview:true,countdown:true};
 let S=(()=>{try{const v2=localStorage.getItem('teleprompter.v2');if(v2){const o=JSON.parse(v2);if(o.boxh==null)o.preview=true;return {...DEF,...o}}
   const v1=JSON.parse(localStorage.getItem('teleprompter.v1')||'{}');return {...DEF,...v1,readline:DEF.readline}}catch(e){return {...DEF}}})();
 let modeBack=null;
@@ -245,7 +258,7 @@ const IOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='M
 const save=()=>{try{localStorage.setItem('teleprompter.v2',JSON.stringify({...S,mode:modeBack||S.mode}))}catch(e){}};
 
 /* ---------- preparo: ligações dos controles ---------- */
-const fmt={boxh:v=>v+'%',op:v=>v+'%',width:v=>v+'%',offset:v=>(v>0?'+':'')+v,readline:v=>v+'%',font:v=>v+' px',lh:v=>(+v).toFixed(2),speed:v=>v+' px/s',thresh:v=>v+' dB'};
+const fmt={wpm:v=>v+' palavras/min',boxh:v=>v+'%',op:v=>v+'%',width:v=>v+'%',offset:v=>(v>0?'+':'')+v,readline:v=>v+'%',font:v=>v+' px',lh:v=>(+v).toFixed(2),speed:v=>v+' px/s',thresh:v=>v+' dB'};
 function applyVars(){
   const r=document.documentElement.style;
   r.setProperty('--w',S.width);r.setProperty('--off',S.offset);r.setProperty('--rl',S.readline);r.setProperty('--bh',S.boxh);r.setProperty('--op',S.op);
@@ -270,38 +283,65 @@ ta.addEventListener('input',()=>{S.text=ta.value;save();updCount()});updCount();
 const INFO={voz:'O texto acompanha as palavras que você fala e para quando você para. Se você improvisar, ele espera você voltar ao roteiro.',
   ritmo:'O texto anda na velocidade escolhida só enquanto o microfone ouve voz. Use se o modo Voz falhar ou durante a gravação, se o iPhone não liberar o ditado.',
   fixo:'O texto anda sempre na velocidade escolhida. Toque na tela para pausar.'};
-function setMode(m){S.mode=m;save();$$('.seg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode===m));
-  $('#modeinfo').textContent=INFO[m]+(m==='voz'&&S.record&&IOS?' Atenção: no iPhone, o ditado e a gravação não usam o microfone ao mesmo tempo. Com a gravação ligada, o texto anda no modo Ritmo.':'');$('#r-speed').hidden=m==='voz';$('#r-thresh').hidden=m!=='ritmo';}
-$$('.seg button').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
+function setMode(m){S.mode=m;save();$$('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode===m));
+  updRows();
+  $('#modeinfo').textContent=INFO[m]+(m==='voz'&&S.record&&IOS?' Atenção: no iPhone, o ditado e a gravação não usam o microfone ao mesmo tempo. Com a gravação ligada, o texto anda no modo Ritmo.':'');$('#r-thresh').hidden=m!=='ritmo';}
+$$('[data-mode]').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
+function updRows(){$('#r-speed').hidden=S.mode==='voz'||S.view==='frase';$('#r-wpm').hidden=S.mode==='voz'||S.view!=='frase';
+  $$('[data-view]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.view===S.view))}
+$$('[data-view]').forEach(b=>b.addEventListener('click',()=>{S.view=b.dataset.view;save();updRows()}));
 setMode(S.mode);applyVars();
 
 /* ---------- texto ---------- */
 const norm=s=>s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,' ').trim().split(' ').filter(Boolean);
-const textEl=$('#text');let W=[],M=[];
+const textEl=$('#text');let W=[],M=[],P=[],PM=[];
 function build(){
-  textEl.textContent='';W=[];M=[];let inNote=false;
+  textEl.textContent='';W=[];M=[];P=[];PM=[];let inNote=false,ph=null;
+  const close=pend=>{if(!ph)return;if(pend)ph.el.classList.add('pend');ph=null};
   S.text.split('\n').forEach(par=>{
-    const p=document.createElement('p');
-    if(!par.trim()){p.className='gap';textEl.appendChild(p);return}
+    if(!par.trim()){close(true);if(P.length)P[P.length-1].el.classList.add('pend');return}
     par.trim().split(/\s+/).forEach(w=>{
+      if(!ph){const el=document.createElement('span');el.className='ph';textEl.appendChild(el);ph={el,m0:-1,m1:-1,n:0};P.push(ph)}
       const sp=document.createElement('span');sp.className='w';sp.textContent=w;
       if(w.startsWith('['))inNote=true;
       const note=inNote; if(w.endsWith(']'))inNote=false;
       if(note)sp.classList.add('note');
       const wi=W.length;sp.dataset.i=wi;W.push({el:sp,top:0});
-      if(!note)norm(w).forEach(key=>M.push({w:wi,key}));
-      p.appendChild(sp);p.appendChild(document.createTextNode(' '));
+      if(!note)norm(w).forEach(key=>{if(ph.m0<0)ph.m0=M.length;ph.m1=M.length;PM.push(P.length-1);M.push({w:wi,key})});
+      ph.el.appendChild(sp);ph.el.appendChild(document.createTextNode(' '));
+      if(!note)ph.n++;
+      if(/[.!?;:\u2026]["\u201d')\]]*$/.test(w)||(ph.n>=11&&/,$/.test(w))||ph.n>=18)close(false);
     });
-    textEl.appendChild(p);
+    close(true);
   });
+  $('#col').classList.toggle('frase',S.view==='frase');
 }
+/* ---------- frase a frase ---------- */
+let cp=0,talk=0;
+const real=i=>{while(i<P.length&&P[i].m0<0)i++;return Math.min(i,P.length-1)};
+function setCP(i,snap=true){
+  if(!P.length)return;i=Math.max(0,Math.min(real(i),P.length-1));
+  const changed=i!==cp;cp=i;talk=0;
+  const nx=real(cp+1);
+  P.forEach((p,k)=>{p.el.classList.toggle('past',k<cp);p.el.classList.toggle('now',k===cp);
+    p.el.classList.toggle('next',k>cp&&k<=nx);p.el.classList.toggle('later',k>nx)});
+  target=P[cp].el.offsetTop-READ();if(snap)y=target;
+  if(changed&&textEl.animate)textEl.animate([{opacity:.45},{opacity:1}],{duration:160});
+}
+const nextCP=()=>{let n=cp+1;while(n<P.length&&P[n].m0<0)n++;if(n<P.length)setCP(n)};
+const prevCP=()=>{let n=cp-1;while(n>0&&P[n].m0<0)n--;if(n>=0)setCP(n)};
+function fitCam(){const v=$('#cam'),box=$('#prompter');if(!v.videoWidth||v.hidden)return;
+  const W0=box.clientWidth,H0=box.clientHeight,k=Math.max(W0/v.videoWidth,H0/v.videoHeight),w=v.videoWidth*k,h=v.videoHeight*k;
+  v.style.width=w+'px';v.style.height=h+'px';v.style.left=(W0-w)/2+'px';v.style.top=(H0-h)/2+'px'}
+['loadedmetadata','resize','playing'].forEach(ev=>$('#cam').addEventListener(ev,fitCam));
+addEventListener('resize',fitCam);setInterval(fitCam,1000);
 let stageH=innerHeight;
 function measure(){stageH=$('#stage').clientHeight;W.forEach(w=>w.top=w.el.offsetTop)}
 addEventListener('resize',()=>{if(!$('#prompter').hidden){measure();if(S.mode==='voz')target=targetFor(pos)}});
 
 /* ---------- posição e rolagem ---------- */
 let pos=0,y=0,target=0,running=false,paused=false;
-const READ=()=>S.font*.2;
+const READ=()=>S.view==='frase'?S.font*.35:S.font*.2;
 const targetFor=p=>{const m=M[Math.min(p,M.length-1)],w=m&&W[m.w];return w?w.top-READ():-READ()};
 let shown=0;
 function setPos(p){
@@ -311,7 +351,8 @@ function setPos(p){
   $$('.w.cur').forEach(e=>e.classList.remove('cur'));
   if(S.mode==='voz'&&M[p])W[M[p].w].el.classList.add('cur');
   shown=p;pos=p;
-  if(S.mode==='voz')target=targetFor(p);
+  if(S.view==='frase'){if(M.length&&p<M.length&&PM[p]>cp)setCP(PM[p]);else if(p>=M.length&&P.length)setCP(P.length-1)}
+  else if(S.mode==='voz')target=targetFor(p);
 }
 function resetMarks(){W.forEach(w=>w.el.classList.remove('done','cur'));shown=0}
 
@@ -445,7 +486,15 @@ function frame(t){
   if(analyser&&(S.mode==='ritmo'||running))readLevel();
   const now=performance.now();
   if(running){
-    if(S.mode==='ritmo'){if(now-loudAt<380)target+=S.speed*dt}
+    if(S.view==='frase'&&S.mode!=='voz'&&P.length){
+      const ph=P[cp],est=Math.max(1,ph.n)*60/S.wpm,loud=now-loudAt<380;
+      if(S.mode==='fixo'||loud)talk+=dt;
+      if(S.mode==='fixo'?talk>=est:((talk>=.7*est&&now-loudAt>320)||talk>=1.45*est))nextCP();
+    }
+    else if(S.view==='frase'&&S.mode==='voz'&&P.length){
+      const ph=P[cp];if(pos>=ph.m1&&pos<=ph.m1+1&&now-heardAt>650&&cp<P.length-1)nextCP();
+    }
+    else if(S.mode==='ritmo'){if(now-loudAt<380)target+=S.speed*dt}
     else if(S.mode==='fixo'){target+=S.speed*dt}
     else if(analyser&&now-loudAt<300&&now-voiceResultAt>7000&&now-t0>7000&&wantVoice){
       toast('O ditado parou de responder. Passei para o modo Ritmo.');switchToRitmo();
@@ -455,7 +504,7 @@ function frame(t){
     $('#statetxt').textContent=S.mode==='voz'?(talking?'acompanhando':'esperando a fala'):S.mode==='ritmo'?(talking?'rolando':'parado'):'rolando';
     const sec=Math.floor((elapsed+now-t0)/1000);$('#timer').textContent=Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');
   }
-  const k=S.mode==='voz'?Math.min(1,dt*5):Math.min(1,dt*14);
+  const k=S.view==='frase'?1:S.mode==='voz'?Math.min(1,dt*5):Math.min(1,dt*14);
   y+=(target-y)*k;
   textEl.style.transform=`translate3d(0,${-y}px,0)`;
   requestAnimationFrame(frame);
@@ -476,20 +525,21 @@ $('#go').addEventListener('click',async()=>{
   if(actx&&actx.state==='suspended')actx.resume();
   $('#setup').hidden=true;$('#prompter').hidden=false;
   build();applyVars();measure();resetMarks();pos=0;
-  y=target=targetFor(0);setPos(0);elapsed=0;$('#timer').textContent='0:00';
-  if(S.record&&S.preview){$('#cam').srcObject=stream;$('#cam').hidden=false}else $('#cam').hidden=true;
+  y=target=targetFor(0);cp=-1;setPos(0);if(S.view==='frase')setCP(0);elapsed=0;$('#timer').textContent='0:00';
+  if(S.record&&S.preview){$('#cam').srcObject=stream;$('#cam').hidden=false;fitCam()}else $('#cam').hidden=true;
   lockScreen();try{document.documentElement.requestFullscreen?.().catch(()=>{})}catch(e){}
   if(S.countdown){const c=$('#countdown');c.hidden=false;for(const n of [3,2,1]){c.textContent=n;await new Promise(r=>setTimeout(r,800))}c.hidden=true}
   if(S.record)startRecording();
   finalTail=[];heardAt=0;begin();
 });
-function begin(){running=true;paused=false;t0=performance.now();voiceResultAt=t0;$('#dock').hidden=true;
+function begin(){running=true;paused=false;talk=0;t0=performance.now();voiceResultAt=t0;$('#dock').hidden=true;
   if(S.mode==='voz'&&!wantVoice&&SR)startVoice();}
 function pause(){if(!running)return;running=false;paused=true;elapsed+=performance.now()-t0;$('#dock').hidden=false;
   $('#dot').classList.remove('on');$('#statetxt').textContent='pausado';
-  $('#pausetip').textContent=S.mode==='voz'?'Pausado. Arraste o texto ou toque numa palavra para recomeçar dali.':'Pausado. Arraste o texto para ajustar o ponto.';}
+  $('#pausetip').textContent=S.view==='frase'?'Pausado. Arraste para cima ou para baixo para trocar de frase.':S.mode==='voz'?'Pausado. Arraste o texto ou toque numa palavra para recomeçar dali.':'Pausado. Arraste o texto para ajustar o ponto.';}
 $('#resume').addEventListener('click',e=>{e.stopPropagation();finalTail=[];begin()});
-$('#restart').addEventListener('click',e=>{e.stopPropagation();resetMarks();setPos(0);target=targetFor(0)});
+$('#restart').addEventListener('click',e=>{e.stopPropagation();if(S.view==='frase'){goCP(0);return}resetMarks();setPos(0);target=targetFor(0)});
+function goCP(i){resetMarks();cp=-1;setCP(i);setPos(Math.max(0,P[cp].m0))}
 $('#finish').addEventListener('click',e=>{e.stopPropagation();finish()});
 function finish(){
   running=false;paused=false;stopVoice();
@@ -510,15 +560,17 @@ let drag=null;
 const stage=$('#prompter');
 stage.addEventListener('pointerdown',e=>{if(e.target.closest('.dock'))return;drag={y0:e.clientY,start:y,moved:false}});
 stage.addEventListener('pointermove',e=>{if(!drag||!paused)return;const dy=e.clientY-drag.y0;if(Math.abs(dy)>8)drag.moved=true;
-  if(drag.moved){y=target=drag.start-dy}});
+  if(drag.moved&&S.view!=='frase'){y=target=drag.start-dy}});
 stage.addEventListener('pointerup',e=>{
   if(!drag)return;const d=drag;drag=null;if(e.target.closest('.dock'))return;
   if(running){pause();return}
   if(!paused)return;
+  if(d.moved&&S.view==='frase'){const dy=e.clientY-d.y0;goCP(dy<0?real(cp+1):Math.max(0,cp-1));return}
   if(d.moved){ // escolhe a palavra que ficou na linha de leitura
     const line=y+READ()-S.font*.4;let p=M.findIndex(m=>W[m.w].top>=line);if(p<0)p=M.length;
     resetMarks();setPos(p);if(S.mode!=='voz')target=y;return}
   const w=e.target.closest('.w');
+  if(w&&S.view==='frase'){const i=+w.dataset.i,ph=P.findIndex(x=>x.el.contains(w));if(ph>=0)goCP(ph);return}
   if(w&&S.mode==='voz'){const i=+w.dataset.i;let p=M.findIndex(m=>m.w>=i);if(p<0)p=M.length;resetMarks();setPos(p)}
 });
 addEventListener('keydown',e=>{
@@ -526,10 +578,10 @@ addEventListener('keydown',e=>{
   if(e.code==='Space'){e.preventDefault();running?pause():begin()}
   else if(e.key==='Escape')finish();
   else if(e.key==='ArrowDown'||e.key==='ArrowUp'){const d=e.key==='ArrowDown'?1:-1;
-    if(S.mode==='voz')setPos(pos+d*5);else target+=d*S.font*S.lh*2}
+    if(S.view==='frase')goCP(d>0?real(cp+1):Math.max(0,cp-1));else if(S.mode==='voz')setPos(pos+d*5);else target+=d*S.font*S.lh*2}
 });
 
-if(location.hash==='#teste')window.__tp={align,norm,build,setPos,get pos(){return pos},get M(){return M}};
+if(location.hash==='#teste')window.__tp={align,norm,build,setPos,setCP,get cp(){return cp},get P(){return P},get pos(){return pos},get M(){return M}};
 
 /* ---------- aviso ---------- */
 let tt;function toast(msg){let el=$('.toast');if(!el){el=document.createElement('div');el.className='toast';el.setAttribute('role','status');document.body.appendChild(el)}

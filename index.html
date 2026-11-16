@@ -154,7 +154,7 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
       <div class="group">
         <div class="row"><label for="width">Largura do texto</label><output id="o-width"></output><input type="range" id="width" data-k="width" min="22" max="100" step="1"></div>
         <div class="row"><label for="offset">Deslocamento lateral</label><output id="o-offset"></output><input type="range" id="offset" data-k="offset" min="-30" max="30" step="1"></div>
-        <div class="row"><label for="readline">Altura da linha de leitura</label><output id="o-readline"></output><input type="range" id="readline" data-k="readline" min="4" max="60" step="1"></div>
+        <div class="row"><label for="readline">Altura da linha de leitura</label><output id="o-readline"></output><input type="range" id="readline" data-k="readline" min="2" max="60" step="1"></div>
         <div class="row"><label for="font">Tamanho da letra</label><output id="o-font"></output><input type="range" id="font" data-k="font" min="18" max="80" step="1"></div>
         <div class="row"><label for="lh">Espaço entre linhas</label><output id="o-lh"></output><input type="range" id="lh" data-k="lh" min="1.05" max="1.9" step="0.05"></div>
       </div>
@@ -193,7 +193,7 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
     <div class="sheet">
       <div class="row"><label for="q-width">Largura</label><output id="oq-width"></output><input type="range" id="q-width" data-k="width" min="22" max="100" step="1"></div>
       <div class="row"><label for="q-font">Letra</label><output id="oq-font"></output><input type="range" id="q-font" data-k="font" min="18" max="80" step="1"></div>
-      <div class="row"><label for="q-readline">Linha de leitura</label><output id="oq-readline"></output><input type="range" id="q-readline" data-k="readline" min="4" max="60" step="1"></div>
+      <div class="row"><label for="q-readline">Linha de leitura</label><output id="oq-readline"></output><input type="range" id="q-readline" data-k="readline" min="2" max="60" step="1"></div>
     </div>
     <p class="paused-tip" id="pausetip">Pausado. Arraste o texto ou toque numa palavra para recomeçar dali.</p>
     <div class="tools">
@@ -232,9 +232,12 @@ A segunda é conversar com o cirurgião antes, e não durante.
 E a terceira é deixar a sala pronta para o pior cenário, mesmo quando tudo indica que vai ser tranquilo.
 
 Se isso fez sentido para você, salva esse vídeo e manda para aquele colega que vive correndo.`;
-const DEF={text:EXEMPLO,mode:'voz',speed:44,thresh:-46,width:52,offset:0,readline:16,font:32,lh:1.3,mirror:false,record:false,preview:false,countdown:true};
-let S=(()=>{try{return {...DEF,...JSON.parse(localStorage.getItem('teleprompter.v1')||'{}')}}catch(e){return {...DEF}}})();
-const save=()=>{try{localStorage.setItem('teleprompter.v1',JSON.stringify(S))}catch(e){}};
+const DEF={text:EXEMPLO,mode:'voz',speed:44,thresh:-46,width:52,offset:0,readline:7,font:32,lh:1.3,mirror:false,record:false,preview:false,countdown:true};
+let S=(()=>{try{const v2=localStorage.getItem('teleprompter.v2');if(v2)return {...DEF,...JSON.parse(v2)};
+  const v1=JSON.parse(localStorage.getItem('teleprompter.v1')||'{}');return {...DEF,...v1,readline:DEF.readline}}catch(e){return {...DEF}}})();
+let modeBack=null;
+const IOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const save=()=>{try{localStorage.setItem('teleprompter.v2',JSON.stringify({...S,mode:modeBack||S.mode}))}catch(e){}};
 
 /* ---------- preparo: ligações dos controles ---------- */
 const fmt={width:v=>v+'%',offset:v=>(v>0?'+':'')+v,readline:v=>v+'%',font:v=>v+' px',lh:v=>(+v).toFixed(2),speed:v=>v+' px/s',thresh:v=>v+' dB'};
@@ -252,7 +255,7 @@ $$('[data-k]').forEach(el=>{
   el.addEventListener('input',()=>{
     S[k]=el.type==='checkbox'?el.checked:(+el.value);
     $$('[data-k="'+k+'"]').forEach(o=>{if(o!==el){if(o.type==='checkbox')o.checked=S[k];else o.value=S[k]}});
-    applyVars();save();
+    applyVars();save();if(k==='record')setMode(S.mode);
     if(running||paused)requestAnimationFrame(()=>{measure();if(S.mode==='voz')target=targetFor(pos)});
   });
 });
@@ -263,7 +266,7 @@ const INFO={voz:'O texto acompanha as palavras que você fala e para quando voc�
   ritmo:'O texto anda na velocidade escolhida só enquanto o microfone ouve voz. Use se o modo Voz falhar ou durante a gravação, se o iPhone não liberar o ditado.',
   fixo:'O texto anda sempre na velocidade escolhida. Toque na tela para pausar.'};
 function setMode(m){S.mode=m;save();$$('.seg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode===m));
-  $('#modeinfo').textContent=INFO[m];$('#r-speed').hidden=m==='voz';$('#r-thresh').hidden=m!=='ritmo';}
+  $('#modeinfo').textContent=INFO[m]+(m==='voz'&&S.record&&IOS?' Atenção: no iPhone, o ditado e a gravação não usam o microfone ao mesmo tempo. Com a gravação ligada, o texto anda no modo Ritmo.':'');$('#r-speed').hidden=m==='voz';$('#r-thresh').hidden=m!=='ritmo';}
 $$('.seg button').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
 setMode(S.mode);applyVars();
 
@@ -399,11 +402,13 @@ function startRecording(){
   const mime=types.find(t=>window.MediaRecorder&&MediaRecorder.isTypeSupported(t))||'';
   try{recorder=new MediaRecorder(stream,mime?{mimeType:mime,videoBitsPerSecond:8e6}:undefined)}catch(e){toast('Este navegador não grava vídeo.');return}
   chunks=[];recorder.ondataavailable=e=>e.data.size&&chunks.push(e.data);
-  recorder.onstop=showTake;recorder.start(1000);$('#rec').hidden=false;
+  recorder.onstop=showTake;recorder.onerror=e=>toast('A gravação falhou: '+((e.error&&e.error.name)||'erro desconhecido'));
+  stream.getTracks().forEach(t=>t.onended=()=>toast('O iPhone desligou '+(t.kind==='video'?'a câmera':'o microfone')+' durante a gravação.'));
+  recorder.start(1000);$('#rec').hidden=false;
 }
 function showTake(){
-  $('#rec').hidden=true;if(!chunks.length)return;
-  const type=recorder.mimeType||chunks[0].type||'video/mp4';
+  $('#rec').hidden=true;if(!chunks.length){toast('A gravação não gerou vídeo. Tente de novo; se repetir, me avise.');return}
+  const type=(chunks[0]&&chunks[0].type)||'video/mp4';
   takeBlob=new Blob(chunks,{type});if(takeURL)URL.revokeObjectURL(takeURL);takeURL=URL.createObjectURL(takeBlob);
   const d=new Date(),p=n=>String(n).padStart(2,'0');
   const name=`take ${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}h${p(d.getMinutes())}.${type.includes('webm')?'webm':'mp4'}`;
@@ -458,6 +463,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 $('#go').addEventListener('click',async()=>{
   testing=false;S.text=ta.value;save();
   // pedidos de permissão ainda dentro do toque (exigência do iPhone)
+  if(S.mode==='voz'&&S.record&&IOS){modeBack='voz';S.mode='ritmo'}
   if(S.mode==='voz')startVoice()||(S.mode='ritmo',setMode('ritmo'));
   const needMic=S.record||S.mode==='ritmo';
   if(needMic&&!await ensureAudio(S.record)){stopVoice();return}
@@ -481,9 +487,13 @@ $('#restart').addEventListener('click',e=>{e.stopPropagation();resetMarks();setP
 $('#finish').addEventListener('click',e=>{e.stopPropagation();finish()});
 function finish(){
   running=false;paused=false;stopVoice();
-  if(recorder&&recorder.state!=='inactive')recorder.stop();
-  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
-  if(actx){actx.close();actx=null;analyser=null}
+  const release=()=>{if(stream){stream.getTracks().forEach(t=>{t.onended=null;t.stop()});stream=null}
+    if(actx){actx.close();actx=null;analyser=null}};
+  // só solta câmera e microfone depois que o gravador entregar o último pedaço
+  if(recorder&&recorder.state!=='inactive'){recorder.onstop=()=>{showTake();release()};try{recorder.requestData()}catch(e){}recorder.stop()}
+  else release();
+  recorder=null;
+  if(modeBack){S.mode=modeBack;modeBack=null;setMode(S.mode)}
   $('#cam').srcObject=null;wake&&wake.release&&wake.release();wake=null;
   try{document.fullscreenElement&&document.exitFullscreen()}catch(e){}
   $('#prompter').hidden=true;$('#setup').hidden=false;$('#dock').hidden=true;

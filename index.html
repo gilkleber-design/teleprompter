@@ -19,7 +19,7 @@
   --accent:#f2b544; --rec:#ff4d4d; --ok:#4cd28a;
   --f-read:"Atkinson Hyperlegible",-apple-system,"Helvetica Neue",Arial,sans-serif;
   --f-ui:"Space Grotesk",-apple-system,"Helvetica Neue",Arial,sans-serif;
-  --w:55; --off:0; --fs:34px; --lh:1.35; --rl:18;
+  --w:55; --off:0; --fs:34px; --lh:1.35; --rl:7; --bh:40; --op:45;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -65,8 +65,8 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
 .phone{position:relative;width:120px;aspect-ratio:9/19.5;border-radius:20px;border:2px solid var(--line);background:#000;overflow:hidden;max-width:100%}
 .phone .cam{position:absolute;top:7px;left:50%;width:34px;height:10px;margin-left:-17px;border-radius:6px;background:#222;box-shadow:inset 0 0 0 1px #333}
 .phone .cam::after{content:"";position:absolute;right:5px;top:2.5px;width:5px;height:5px;border-radius:50%;background:#3a5a8a}
-.phone .pcol{position:absolute;top:22px;bottom:8px;left:50%;width:calc(var(--w)*1%);transform:translateX(calc(-50% + var(--off)*1%));background:repeating-linear-gradient(#fff3 0 2px,transparent 2px 7px);border-left:1px dashed #fff3;border-right:1px dashed #fff3}
-.phone .pline{position:absolute;left:0;right:0;top:calc(var(--rl)*1%);height:2px;background:var(--accent)}
+.phone{background:linear-gradient(160deg,#3a4350,#1d232b 60%,#2b2420)}
+.phone .pcol{position:absolute;top:calc(var(--rl)*1%);height:calc(var(--bh)*1%);left:50%;width:calc(var(--w)*1%);transform:translateX(calc(-50% + var(--off)*1%));border-radius:6px;background:repeating-linear-gradient(#fff6 0 2px,transparent 2px 7px) 4px 5px/calc(100% - 8px) 100% no-repeat,rgb(0 0 0 / calc(var(--op)*1%));box-shadow:inset 0 2px 0 var(--accent)}
 .meter{height:6px;border-radius:3px;background:var(--line);position:relative;overflow:hidden;grid-column:1/-1}
 .meter i{position:absolute;inset:0 auto 0 0;width:0;background:var(--ok);transition:width .06s linear}
 .meter b{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--accent)}
@@ -78,28 +78,30 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
 #prompter{position:fixed;inset:0;background:#000;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
 .stage{position:absolute;inset:0}
 .stage.mirror{transform:scaleX(-1)}
-.col{position:absolute;top:0;bottom:0;left:50%;width:calc(var(--w)*1%);transform:translateX(calc(-50% + var(--off)*1vw))}
-.text{position:absolute;left:0;right:0;top:0;will-change:transform;font:400 var(--fs)/var(--lh) var(--f-read);color:var(--fg);padding-bottom:110vh;overflow-wrap:break-word;hyphens:manual}
+.col{position:absolute;top:calc(var(--rl)*1%);height:calc(var(--bh)*1%);left:50%;width:calc(var(--w)*1%);transform:translateX(calc(-50% + var(--off)*1vw));background:rgb(0 0 0 / calc(var(--op)*1%));border-radius:18px;overflow:hidden;-webkit-backdrop-filter:blur(calc(var(--op)*.08px));backdrop-filter:blur(calc(var(--op)*.08px))}
+.view{position:absolute;inset:0 18px;-webkit-mask-image:linear-gradient(#000 78%,transparent);mask-image:linear-gradient(#000 78%,transparent)}
+.text{position:absolute;left:0;right:0;top:0;will-change:transform;font:400 var(--fs)/var(--lh) var(--f-read);color:var(--fg);text-shadow:0 1px 3px #0009;padding-bottom:110vh;overflow-wrap:break-word;hyphens:manual}
 .text p{margin:0 0 .55em}
 .text p.gap{height:.5em}
 .w{transition:color .25s}
-.w.done{color:var(--read)}
+.w.done{color:#ffffff5c}
 .w.cur{color:var(--fg);text-decoration:underline 3px var(--accent);text-underline-offset:.18em}
 .w.note{color:var(--dim);font-style:italic;font-size:.7em}
-.mark{position:absolute;left:-18px;right:-18px;top:calc(var(--rl)*1%);height:0;pointer-events:none;z-index:2}
-.mark::before,.mark::after{content:"";position:absolute;top:-7px;border:7px solid transparent}
+.mark{position:absolute;left:0;right:0;top:calc(var(--fs)*.2 + var(--fs)*var(--lh)/2);height:0;pointer-events:none;z-index:2}
+.mark::before,.mark::after{content:"";position:absolute;top:-6px;border:6px solid transparent}
 .mark::before{left:0;border-left-color:var(--accent)}
 .mark::after{right:0;border-right-color:var(--accent)}
-.fade{position:absolute;left:0;right:0;top:0;height:calc(var(--rl)*1% - 1.2em);background:linear-gradient(#000 20%,#000c 60%,transparent);pointer-events:none;z-index:1}
 
-.hud{position:absolute;left:0;right:0;top:0;padding:calc(env(safe-area-inset-top,0px) + 8px) max(14px,env(safe-area-inset-right,0px)) 8px max(14px,env(safe-area-inset-left,0px));display:flex;justify-content:space-between;align-items:center;font:600 12px var(--f-ui);color:var(--dim);z-index:5;pointer-events:none;font-variant-numeric:tabular-nums}
+
+.hud{position:absolute;left:0;right:0;top:0;padding:calc(env(safe-area-inset-top,0px) + 8px) max(14px,env(safe-area-inset-right,0px)) 8px max(14px,env(safe-area-inset-left,0px));display:flex;justify-content:space-between;align-items:center;font:600 12px var(--f-ui);color:#c9d0d8;text-shadow:0 1px 3px #000;z-index:5;pointer-events:none;font-variant-numeric:tabular-nums}
 .state{display:flex;align-items:center;gap:7px}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--read);transition:background .15s}
 .dot.on{background:var(--ok)}
 .recpill{color:var(--rec);display:flex;align-items:center;gap:6px}
 .recpill::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--rec);animation:blink 1s steps(2) infinite}
 @keyframes blink{50%{opacity:.2}}
-#cam{position:absolute;right:max(10px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 90px);width:90px;border-radius:10px;transform:scaleX(-1);z-index:4;opacity:.85;background:#111}
+#cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);z-index:0;background:#000}
+.stage{z-index:1}
 
 .dock{position:absolute;left:0;right:0;bottom:0;z-index:6;padding:14px max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 14px) max(16px,env(safe-area-inset-left,0px));background:linear-gradient(transparent,#000e 30%);display:grid;gap:10px;justify-items:center}
 .dock .tools{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
@@ -154,7 +156,9 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
       <div class="group">
         <div class="row"><label for="width">Largura do texto</label><output id="o-width"></output><input type="range" id="width" data-k="width" min="22" max="100" step="1"></div>
         <div class="row"><label for="offset">Deslocamento lateral</label><output id="o-offset"></output><input type="range" id="offset" data-k="offset" min="-30" max="30" step="1"></div>
-        <div class="row"><label for="readline">Altura da linha de leitura</label><output id="o-readline"></output><input type="range" id="readline" data-k="readline" min="2" max="60" step="1"></div>
+        <div class="row"><label for="boxh">Altura da moldura</label><output id="o-boxh"></output><input type="range" id="boxh" data-k="boxh" min="12" max="95" step="1"></div>
+        <div class="row"><label for="op">Fundo da moldura</label><output id="o-op"></output><input type="range" id="op" data-k="op" min="0" max="95" step="1"></div>
+        <div class="row"><label for="readline">Distância do topo</label><output id="o-readline"></output><input type="range" id="readline" data-k="readline" min="2" max="60" step="1"></div>
         <div class="row"><label for="font">Tamanho da letra</label><output id="o-font"></output><input type="range" id="font" data-k="font" min="18" max="80" step="1"></div>
         <div class="row"><label for="lh">Espaço entre linhas</label><output id="o-lh"></output><input type="range" id="lh" data-k="lh" min="1.05" max="1.9" step="0.05"></div>
       </div>
@@ -167,7 +171,7 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
   <section class="group">
     <h2>Gravação</h2>
     <label class="toggle"><span>Gravar vídeo pela câmera frontal<small>No iPhone, a câmera não grava com outro app na frente. Aqui o próprio prompter grava.</small></span><input type="checkbox" id="record" data-k="record"></label>
-    <label class="toggle"><span>Mostrar miniatura da câmera</span><input type="checkbox" id="preview" data-k="preview"></label>
+    <label class="toggle"><span>Câmera ao fundo, em tela cheia<small>O texto fica numa moldura por cima da imagem. O vídeo gravado sai sem o texto.</small></span><input type="checkbox" id="preview" data-k="preview"></label>
     <label class="toggle"><span>Contagem 3-2-1 antes de começar</span><input type="checkbox" id="countdownOn" data-k="countdown"></label>
   </section>
 
@@ -177,9 +181,8 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
 <section id="prompter" hidden>
   <div class="stage" id="stage">
     <div class="col" id="col">
-      <div class="fade"></div>
       <div class="mark"></div>
-      <div class="text" id="text"></div>
+      <div class="view"><div class="text" id="text"></div></div>
     </div>
   </div>
   <video id="cam" playsinline muted autoplay hidden></video>
@@ -193,7 +196,9 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
     <div class="sheet">
       <div class="row"><label for="q-width">Largura</label><output id="oq-width"></output><input type="range" id="q-width" data-k="width" min="22" max="100" step="1"></div>
       <div class="row"><label for="q-font">Letra</label><output id="oq-font"></output><input type="range" id="q-font" data-k="font" min="18" max="80" step="1"></div>
-      <div class="row"><label for="q-readline">Linha de leitura</label><output id="oq-readline"></output><input type="range" id="q-readline" data-k="readline" min="2" max="60" step="1"></div>
+      <div class="row"><label for="q-readline">Distância do topo</label><output id="oq-readline"></output><input type="range" id="q-readline" data-k="readline" min="2" max="60" step="1"></div>
+      <div class="row"><label for="q-boxh">Altura da moldura</label><output id="oq-boxh"></output><input type="range" id="q-boxh" data-k="boxh" min="12" max="95" step="1"></div>
+      <div class="row"><label for="q-op">Fundo</label><output id="oq-op"></output><input type="range" id="q-op" data-k="op" min="0" max="95" step="1"></div>
     </div>
     <p class="paused-tip" id="pausetip">Pausado. Arraste o texto ou toque numa palavra para recomeçar dali.</p>
     <div class="tools">
@@ -232,18 +237,18 @@ A segunda é conversar com o cirurgião antes, e não durante.
 E a terceira é deixar a sala pronta para o pior cenário, mesmo quando tudo indica que vai ser tranquilo.
 
 Se isso fez sentido para você, salva esse vídeo e manda para aquele colega que vive correndo.`;
-const DEF={text:EXEMPLO,mode:'voz',speed:44,thresh:-46,width:52,offset:0,readline:7,font:32,lh:1.3,mirror:false,record:false,preview:false,countdown:true};
-let S=(()=>{try{const v2=localStorage.getItem('teleprompter.v2');if(v2)return {...DEF,...JSON.parse(v2)};
+const DEF={text:EXEMPLO,mode:'voz',speed:44,thresh:-46,width:52,offset:0,readline:7,boxh:40,op:45,font:32,lh:1.3,mirror:false,record:false,preview:true,countdown:true};
+let S=(()=>{try{const v2=localStorage.getItem('teleprompter.v2');if(v2){const o=JSON.parse(v2);if(o.boxh==null)o.preview=true;return {...DEF,...o}}
   const v1=JSON.parse(localStorage.getItem('teleprompter.v1')||'{}');return {...DEF,...v1,readline:DEF.readline}}catch(e){return {...DEF}}})();
 let modeBack=null;
 const IOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const save=()=>{try{localStorage.setItem('teleprompter.v2',JSON.stringify({...S,mode:modeBack||S.mode}))}catch(e){}};
 
 /* ---------- preparo: ligações dos controles ---------- */
-const fmt={width:v=>v+'%',offset:v=>(v>0?'+':'')+v,readline:v=>v+'%',font:v=>v+' px',lh:v=>(+v).toFixed(2),speed:v=>v+' px/s',thresh:v=>v+' dB'};
+const fmt={boxh:v=>v+'%',op:v=>v+'%',width:v=>v+'%',offset:v=>(v>0?'+':'')+v,readline:v=>v+'%',font:v=>v+' px',lh:v=>(+v).toFixed(2),speed:v=>v+' px/s',thresh:v=>v+' dB'};
 function applyVars(){
   const r=document.documentElement.style;
-  r.setProperty('--w',S.width);r.setProperty('--off',S.offset);r.setProperty('--rl',S.readline);
+  r.setProperty('--w',S.width);r.setProperty('--off',S.offset);r.setProperty('--rl',S.readline);r.setProperty('--bh',S.boxh);r.setProperty('--op',S.op);
   r.setProperty('--fs',S.font+'px');r.setProperty('--lh',S.lh);
   $('#stage').classList.toggle('mirror',!!S.mirror);
   for(const k in fmt){$$('#o-'+k+',#oq-'+k).forEach(o=>o.textContent=fmt[k](S[k]))}
@@ -296,7 +301,8 @@ addEventListener('resize',()=>{if(!$('#prompter').hidden){measure();if(S.mode===
 
 /* ---------- posição e rolagem ---------- */
 let pos=0,y=0,target=0,running=false,paused=false;
-const targetFor=p=>{const m=M[Math.min(p,M.length-1)],w=m&&W[m.w];return w?w.top-stageH*S.readline/100:-stageH*S.readline/100};
+const READ=()=>S.font*.2;
+const targetFor=p=>{const m=M[Math.min(p,M.length-1)],w=m&&W[m.w];return w?w.top-READ():-READ()};
 let shown=0;
 function setPos(p){
   p=Math.max(0,Math.min(p,M.length));
@@ -510,7 +516,7 @@ stage.addEventListener('pointerup',e=>{
   if(running){pause();return}
   if(!paused)return;
   if(d.moved){ // escolhe a palavra que ficou na linha de leitura
-    const line=y+stageH*S.readline/100-S.font*.4;let p=M.findIndex(m=>W[m.w].top>=line);if(p<0)p=M.length;
+    const line=y+READ()-S.font*.4;let p=M.findIndex(m=>W[m.w].top>=line);if(p<0)p=M.length;
     resetMarks();setPos(p);if(S.mode!=='voz')target=y;return}
   const w=e.target.closest('.w');
   if(w&&S.mode==='voz'){const i=+w.dataset.i;let p=M.findIndex(m=>m.w>=i);if(p<0)p=M.length;resetMarks();setPos(p)}

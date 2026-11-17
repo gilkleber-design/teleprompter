@@ -292,7 +292,7 @@ const INFO={voz:'O texto acompanha as palavras que você fala e para quando voc�
   fixo:'O texto anda sempre na velocidade escolhida. Toque na tela para pausar.'};
 function setMode(m){S.mode=m;save();$$('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode===m));
   updRows();
-  $('#modeinfo').textContent=INFO[m]+(m==='voz'&&S.record&&IOS?' No iPhone, ditado junto com a gravação é experimental: se o ditado não responder em alguns segundos, o texto passa para o modo Ritmo e avisa.':'');$('#r-thresh').hidden=m!=='ritmo';}
+  $('#modeinfo').textContent=INFO[m]+(m==='voz'&&S.record&&IOS?' Gravando no iPhone, o reconhecimento de voz roda no próprio aparelho, sem internet depois de carregado. Na primeira vez ele baixa 31 MB.':'');$('#r-thresh').hidden=m!=='ritmo';}
 $$('[data-mode]').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
 function updRows(){$('#r-speed').hidden=S.mode==='voz'||S.view==='frase';$('#r-wpm').hidden=S.mode==='voz'||S.view!=='frase';
   $$('[data-view]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.view===S.view))}
@@ -411,13 +411,12 @@ function startVoice(){
   if(!SR){toast('Este navegador não reconhece fala. Usando o modo Ritmo.');return false}
   rec=new SR();rec.lang='pt-BR';rec.continuous=true;rec.interimResults=true;rec.maxAlternatives=1;
   rec.onresult=e=>{
-    voiceResultAt=performance.now();heardAt=voiceResultAt;
-    let interim=[];
+    let fin=[],interim=[];
     for(let i=e.resultIndex;i<e.results.length;i++){
       const t=norm(e.results[i][0].transcript);
-      if(e.results[i].isFinal){finalTail=finalTail.concat(t).slice(-6)}else interim=interim.concat(t);
+      if(e.results[i].isFinal)fin=fin.concat(t);else interim=interim.concat(t);
     }
-    if(running)align(finalTail.concat(interim).slice(-5));
+    heard(fin,interim);
   };
   rec.onerror=e=>{
     if(e.error==='no-speech'||e.error==='aborted')return;
@@ -432,8 +431,45 @@ function startVoice(){
   return true;
 }
 function stopVoice(){wantVoice=false;if(rec){try{rec.abort()}catch(e){}rec=null}}
+function heard(fin,interim){
+  if(!fin.length&&!interim.length)return;
+  voiceResultAt=performance.now();heardAt=voiceResultAt;
+  if(fin.length)finalTail=finalTail.concat(fin).slice(-6);
+  if(running)align(finalTail.concat(interim).slice(-5));
+}
+
+/* ---------- reconhecimento no próprio aparelho (Vosk), para gravar e acompanhar ao mesmo tempo ---------- */
+// No iPhone o ditado do Safari não funciona enquanto a página grava. O Vosk escuta o mesmo áudio da gravação, sem nuvem.
+const VOSK_JS='https://cdn.jsdelivr.net/npm/vosk-browser@0.0.8/dist/vosk.js';
+let localModel=null,localRec=null,localProc=null,micSrc=null,useLocal=false,lastPartial='';
+const wantLocal=()=>S.mode==='voz'&&S.record&&(IOS||/[?&]local=1/.test(location.search));
+function loadScript(src){return new Promise((ok,err)=>{if(window.Vosk)return ok();const sc=document.createElement('script');sc.src=src;sc.onload=ok;sc.onerror=()=>err(new Error('script'));document.head.appendChild(sc)})}
+async function loadModel(){
+  if(localModel)return localModel;
+  await loadScript(VOSK_JS);
+  localModel=await Vosk.createModel(new URL('vosk/pt.tar.gz',location.href).href,-1);
+  return localModel;
+}
+function grammarWords(){
+  const set=new Set();
+  S.text.replace(/\[[^\]]*\]/g,' ').toLowerCase().split(/[^a-zà-ÿ0-9]+/i).forEach(w=>{if(w)set.add(w)});
+  return [...set,'[unk]'];
+}
+function startLocal(){
+  localRec=new localModel.KaldiRecognizer(actx.sampleRate); // vocabulário livre: no teste reconheceu mais palavras do roteiro que com a lista fechada
+  localRec.on('partialresult',m=>{const t=(m.result&&m.result.partial)||'';if(t===lastPartial)return;lastPartial=t;heard([],norm(t))});
+  localRec.on('result',m=>{lastPartial='';heard(norm((m.result&&m.result.text)||''),[])});
+  localProc=actx.createScriptProcessor(4096,1,1);
+  localProc.onaudioprocess=e=>{if(running&&localRec)try{localRec.acceptWaveform(e.inputBuffer)}catch(err){}};
+  micSrc.connect(localProc);localProc.connect(actx.destination);
+}
+function stopLocal(){
+  if(localProc){try{micSrc&&micSrc.disconnect(localProc);localProc.disconnect()}catch(e){}localProc.onaudioprocess=null;localProc=null}
+  if(localRec){try{localRec.remove()}catch(e){}localRec=null}
+  useLocal=false;lastPartial='';
+}
 async function switchToRitmo(){
-  stopVoice();if(!modeBack)modeBack='voz';S.mode='ritmo';setMode('ritmo');$$('.w.cur').forEach(e=>e.classList.remove('cur'));
+  stopVoice();stopLocal();if(!modeBack)modeBack='voz';S.mode='ritmo';setMode('ritmo');$$('.w.cur').forEach(e=>e.classList.remove('cur'));
   target=y;await ensureAudio();
 }
 
@@ -450,7 +486,7 @@ async function ensureAudio(video){
   try{await getStream(video)}catch(e){toast('Sem acesso ao microfone'+(video?' ou à câmera':'')+'. Libere em Ajustes › Safari.');return false}
   if(!analyser){
     actx=new (window.AudioContext||window.webkitAudioContext)();
-    const src=actx.createMediaStreamSource(stream);analyser=actx.createAnalyser();analyser.fftSize=1024;
+    const src=actx.createMediaStreamSource(stream);micSrc=src;analyser=actx.createAnalyser();analyser.fftSize=1024;
     src.connect(analyser);buf=new Float32Array(analyser.fftSize);
   }
   if(actx.state==='suspended')try{await actx.resume()}catch(e){}
@@ -515,7 +551,7 @@ function frame(t){
     }
     else if(S.mode==='ritmo'){if(now-loudAt<380)target+=S.speed*dt}
     else if(S.mode==='fixo'){target+=S.speed*dt}
-    else if(analyser&&now-loudAt<300&&now-voiceResultAt>5000&&now-t0>5000&&wantVoice){
+    else if(analyser&&now-loudAt<300&&now-voiceResultAt>(useLocal?9000:5000)&&now-t0>(useLocal?9000:5000)&&(wantVoice||useLocal)){
       toast('O ditado parou de responder. Passei para o modo Ritmo.');switchToRitmo();
     }
     const talking=S.mode==='voz'?now-heardAt<1200:now-loudAt<380||S.mode==='fixo';
@@ -539,9 +575,12 @@ $('#go').addEventListener('click',async()=>{
   testing=false;S.text=ta.value;save();
   // pedidos de permissão ainda dentro do toque (exigência do iPhone)
   const needMic=S.record||S.mode==='ritmo';
-  if(S.mode==='voz'&&S.record&&IOS){ // no iPhone: câmera e microfone primeiro, depois o ditado
+  if(wantLocal()){ // gravando no iPhone: reconhecimento no próprio aparelho
     if(!await ensureAudio(true))return;
-    startVoice()||(modeBack='voz',S.mode='ritmo');
+    const c=$('#countdown');
+    if(!localModel){$('#setup').hidden=true;$('#prompter').hidden=false;c.hidden=false;c.style.fontSize='22px';c.textContent='Carregando o reconhecimento de voz…'}
+    try{await loadModel();useLocal=true}catch(e){toast('Não consegui carregar o reconhecimento de voz. Usando o modo Ritmo.');modeBack='voz';S.mode='ritmo'}
+    c.hidden=true;c.style.fontSize='';
   }else{
     if(S.mode==='voz')startVoice()||(S.mode='ritmo',setMode('ritmo'));
     if(needMic&&!await ensureAudio(S.record)){stopVoice();return}
@@ -552,12 +591,13 @@ $('#go').addEventListener('click',async()=>{
   y=target=targetFor(0);cp=-1;setPos(0);if(S.view==='frase')setCP(0);elapsed=0;$('#timer').textContent='0:00';
   if(S.record&&S.preview){const v=$('#cam');v.srcObject=stream;v.play().catch(()=>{});$('#camc').hidden=false}else $('#camc').hidden=true;
   lockScreen();try{document.documentElement.requestFullscreen?.().catch(()=>{})}catch(e){}
+  if(useLocal)startLocal();
   if(S.countdown){const c=$('#countdown');c.hidden=false;for(const n of [3,2,1]){c.textContent=n;await new Promise(r=>setTimeout(r,800))}c.hidden=true}
   if(S.record)startRecording();
   finalTail=[];heardAt=0;begin();
 });
 function begin(){running=true;paused=false;talk=0;$('#pausebtn').hidden=false;t0=performance.now();voiceResultAt=t0;$('#dock').hidden=true;
-  if(S.mode==='voz'&&!wantVoice&&SR)startVoice();}
+  if(S.mode==='voz'&&!wantVoice&&!useLocal&&SR)startVoice();}
 function pause(){if(!running)return;running=false;paused=true;$('#pausebtn').hidden=true;elapsed+=performance.now()-t0;$('#dock').hidden=false;
   $('#dot').classList.remove('on');$('#statetxt').textContent='pausado';
   $('#pausetip').textContent=S.view==='frase'?'Pausado. Arraste para cima ou para baixo para trocar de frase.':S.mode==='voz'?'Pausado. Arraste o texto ou toque numa palavra para recomeçar dali.':'Pausado. Arraste o texto para ajustar o ponto.';}
@@ -567,7 +607,7 @@ $('#restart').addEventListener('click',e=>{e.stopPropagation();if(S.view==='fras
 function goCP(i){resetMarks();cp=-1;setCP(i);setPos(Math.max(0,P[cp].m0))}
 $('#finish').addEventListener('click',e=>{e.stopPropagation();finish()});
 function finish(){
-  running=false;paused=false;$('#pausebtn').hidden=true;stopVoice();
+  running=false;paused=false;$('#pausebtn').hidden=true;stopVoice();stopLocal();
   const release=()=>{if(stream){stream.getTracks().forEach(t=>{t.onended=null;t.stop()});stream=null}
     if(actx){actx.close();actx=null;analyser=null}};
   // só solta câmera e microfone depois que o gravador entregar o último pedaço
@@ -606,7 +646,7 @@ addEventListener('keydown',e=>{
     if(S.view==='frase')goCP(d>0?real(cp+1):Math.max(0,cp-1));else if(S.mode==='voz')setPos(pos+d*5);else target+=d*S.font*S.lh*2}
 });
 
-if(location.hash==='#teste')window.__tp={align,norm,build,setPos,setCP,get cp(){return cp},get P(){return P},get pos(){return pos},get M(){return M}};
+if(location.hash==='#teste')window.__tp={heard,loadModel,grammarWords,align,norm,build,setPos,setCP,get cp(){return cp},get P(){return P},get pos(){return pos},get M(){return M}};
 
 /* ---------- aviso ---------- */
 let tt;function toast(msg){let el=$('.toast');if(!el){el=document.createElement('div');el.className='toast';el.setAttribute('role','status');document.body.appendChild(el)}

@@ -117,6 +117,8 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
 .dock .play{border:0;background:var(--accent);color:#1a1405;padding:12px 26px;border-radius:12px;font:700 16px var(--f-ui)}
 .sheet{width:100%;max-width:520px;background:#14181df2;border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:grid;gap:8px}
 .paused-tip{font:500 12.5px var(--f-ui);color:var(--dim);text-align:center;margin:0}
+.pausebtn{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translateX(-50%);z-index:6;width:52px;height:52px;border-radius:50%;border:1px solid #ffffff40;background:#0007;display:flex;align-items:center;justify-content:center;gap:6px;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.pausebtn i{width:5px;height:18px;border-radius:2px;background:#fff}
 #countdown{position:absolute;inset:0;display:grid;place-items:center;font:700 22vmin var(--f-ui);color:var(--accent);z-index:8;pointer-events:none;background:#0008}
 .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 44px);transform:translateX(-50%);max-width:min(92vw,520px);background:var(--panel-2);border:1px solid var(--line);color:var(--fg);padding:10px 14px;border-radius:10px;font-size:14px;z-index:20;box-shadow:0 6px 20px #0009}
 
@@ -185,6 +187,7 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
     <h2>Gravação</h2>
     <label class="toggle"><span>Gravar vídeo pela câmera frontal<small>No iPhone, a câmera não grava com outro app na frente. Aqui o próprio prompter grava.</small></span><input type="checkbox" id="record" data-k="record"></label>
     <label class="toggle"><span>Câmera ao fundo, em tela cheia<small>O texto fica numa moldura por cima da imagem. O vídeo gravado sai sem o texto.</small></span><input type="checkbox" id="preview" data-k="preview"></label>
+    <label class="toggle"><span>Toque na tela troca a frase<small>No modo frase a frase. Para pausar, use o botão no pé da tela.</small></span><input type="checkbox" id="tapnext" data-k="tapnext"></label>
     <label class="toggle"><span>Contagem 3-2-1 antes de começar</span><input type="checkbox" id="countdownOn" data-k="countdown"></label>
   </section>
 
@@ -199,6 +202,7 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
     </div>
   </div>
   <video id="cam" playsinline muted autoplay hidden></video>
+  <button type="button" id="pausebtn" class="pausebtn" aria-label="Pausar" hidden><i></i><i></i></button>
   <div class="hud">
     <span class="state"><i class="dot" id="dot"></i><span id="statetxt">pronto</span></span>
     <span id="rec" class="recpill" hidden>REC</span>
@@ -250,7 +254,7 @@ A segunda é conversar com o cirurgião antes, e não durante.
 E a terceira é deixar a sala pronta para o pior cenário, mesmo quando tudo indica que vai ser tranquilo.
 
 Se isso fez sentido para você, salva esse vídeo e manda para aquele colega que vive correndo.`;
-const DEF={text:EXEMPLO,mode:'voz',speed:44,thresh:-46,width:52,offset:0,readline:7,boxh:40,op:45,view:'frase',wpm:150,font:32,lh:1.3,mirror:false,record:false,preview:true,countdown:true};
+const DEF={text:EXEMPLO,mode:'voz',speed:44,thresh:-46,width:52,offset:0,readline:7,boxh:40,op:45,view:'frase',wpm:150,font:32,lh:1.3,mirror:false,record:false,preview:true,countdown:true,tapnext:true};
 let S=(()=>{try{const v2=localStorage.getItem('teleprompter.v2');if(v2){const o=JSON.parse(v2);if(o.boxh==null)o.preview=true;return {...DEF,...o}}
   const v1=JSON.parse(localStorage.getItem('teleprompter.v1')||'{}');return {...DEF,...v1,readline:DEF.readline}}catch(e){return {...DEF}}})();
 let modeBack=null;
@@ -285,7 +289,7 @@ const INFO={voz:'O texto acompanha as palavras que você fala e para quando voc�
   fixo:'O texto anda sempre na velocidade escolhida. Toque na tela para pausar.'};
 function setMode(m){S.mode=m;save();$$('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode===m));
   updRows();
-  $('#modeinfo').textContent=INFO[m]+(m==='voz'&&S.record&&IOS?' Atenção: no iPhone, o ditado e a gravação não usam o microfone ao mesmo tempo. Com a gravação ligada, o texto anda no modo Ritmo.':'');$('#r-thresh').hidden=m!=='ritmo';}
+  $('#modeinfo').textContent=INFO[m]+(m==='voz'&&S.record&&IOS?' No iPhone, ditado junto com a gravação é experimental: se o ditado não responder em alguns segundos, o texto passa para o modo Ritmo e avisa.':'');$('#r-thresh').hidden=m!=='ritmo';}
 $$('[data-mode]').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
 function updRows(){$('#r-speed').hidden=S.mode==='voz'||S.view==='frase';$('#r-wpm').hidden=S.mode==='voz'||S.view!=='frase';
   $$('[data-view]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.view===S.view))}
@@ -414,7 +418,7 @@ function startVoice(){
 }
 function stopVoice(){wantVoice=false;if(rec){try{rec.abort()}catch(e){}rec=null}}
 async function switchToRitmo(){
-  stopVoice();S.mode='ritmo';setMode('ritmo');$$('.w.cur').forEach(e=>e.classList.remove('cur'));
+  stopVoice();if(!modeBack)modeBack='voz';S.mode='ritmo';setMode('ritmo');$$('.w.cur').forEach(e=>e.classList.remove('cur'));
   target=y;await ensureAudio();
 }
 
@@ -496,7 +500,7 @@ function frame(t){
     }
     else if(S.mode==='ritmo'){if(now-loudAt<380)target+=S.speed*dt}
     else if(S.mode==='fixo'){target+=S.speed*dt}
-    else if(analyser&&now-loudAt<300&&now-voiceResultAt>7000&&now-t0>7000&&wantVoice){
+    else if(analyser&&now-loudAt<300&&now-voiceResultAt>5000&&now-t0>5000&&wantVoice){
       toast('O ditado parou de responder. Passei para o modo Ritmo.');switchToRitmo();
     }
     const talking=S.mode==='voz'?now-heardAt<1200:now-loudAt<380||S.mode==='fixo';
@@ -518,10 +522,14 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 $('#go').addEventListener('click',async()=>{
   testing=false;S.text=ta.value;save();
   // pedidos de permissão ainda dentro do toque (exigência do iPhone)
-  if(S.mode==='voz'&&S.record&&IOS){modeBack='voz';S.mode='ritmo'}
-  if(S.mode==='voz')startVoice()||(S.mode='ritmo',setMode('ritmo'));
   const needMic=S.record||S.mode==='ritmo';
-  if(needMic&&!await ensureAudio(S.record)){stopVoice();return}
+  if(S.mode==='voz'&&S.record&&IOS){ // no iPhone: câmera e microfone primeiro, depois o ditado
+    if(!await ensureAudio(true))return;
+    startVoice()||(modeBack='voz',S.mode='ritmo');
+  }else{
+    if(S.mode==='voz')startVoice()||(S.mode='ritmo',setMode('ritmo'));
+    if(needMic&&!await ensureAudio(S.record)){stopVoice();return}
+  }
   if(actx&&actx.state==='suspended')actx.resume();
   $('#setup').hidden=true;$('#prompter').hidden=false;
   build();applyVars();measure();resetMarks();pos=0;
@@ -532,17 +540,18 @@ $('#go').addEventListener('click',async()=>{
   if(S.record)startRecording();
   finalTail=[];heardAt=0;begin();
 });
-function begin(){running=true;paused=false;talk=0;t0=performance.now();voiceResultAt=t0;$('#dock').hidden=true;
+function begin(){running=true;paused=false;talk=0;$('#pausebtn').hidden=false;t0=performance.now();voiceResultAt=t0;$('#dock').hidden=true;
   if(S.mode==='voz'&&!wantVoice&&SR)startVoice();}
-function pause(){if(!running)return;running=false;paused=true;elapsed+=performance.now()-t0;$('#dock').hidden=false;
+function pause(){if(!running)return;running=false;paused=true;$('#pausebtn').hidden=true;elapsed+=performance.now()-t0;$('#dock').hidden=false;
   $('#dot').classList.remove('on');$('#statetxt').textContent='pausado';
   $('#pausetip').textContent=S.view==='frase'?'Pausado. Arraste para cima ou para baixo para trocar de frase.':S.mode==='voz'?'Pausado. Arraste o texto ou toque numa palavra para recomeçar dali.':'Pausado. Arraste o texto para ajustar o ponto.';}
+$('#pausebtn').addEventListener('click',e=>{e.stopPropagation();pause()});
 $('#resume').addEventListener('click',e=>{e.stopPropagation();finalTail=[];begin()});
 $('#restart').addEventListener('click',e=>{e.stopPropagation();if(S.view==='frase'){goCP(0);return}resetMarks();setPos(0);target=targetFor(0)});
 function goCP(i){resetMarks();cp=-1;setCP(i);setPos(Math.max(0,P[cp].m0))}
 $('#finish').addEventListener('click',e=>{e.stopPropagation();finish()});
 function finish(){
-  running=false;paused=false;stopVoice();
+  running=false;paused=false;$('#pausebtn').hidden=true;stopVoice();
   const release=()=>{if(stream){stream.getTracks().forEach(t=>{t.onended=null;t.stop()});stream=null}
     if(actx){actx.close();actx=null;analyser=null}};
   // só solta câmera e microfone depois que o gravador entregar o último pedaço
@@ -558,12 +567,12 @@ function finish(){
 /* toque: pausa; com pausa, arrastar rola e tocar numa palavra reposiciona */
 let drag=null;
 const stage=$('#prompter');
-stage.addEventListener('pointerdown',e=>{if(e.target.closest('.dock'))return;drag={y0:e.clientY,start:y,moved:false}});
+stage.addEventListener('pointerdown',e=>{if(e.target.closest('.dock,#pausebtn'))return;drag={y0:e.clientY,start:y,moved:false}});
 stage.addEventListener('pointermove',e=>{if(!drag||!paused)return;const dy=e.clientY-drag.y0;if(Math.abs(dy)>8)drag.moved=true;
   if(drag.moved&&S.view!=='frase'){y=target=drag.start-dy}});
 stage.addEventListener('pointerup',e=>{
-  if(!drag)return;const d=drag;drag=null;if(e.target.closest('.dock'))return;
-  if(running){pause();return}
+  if(!drag)return;const d=drag;drag=null;if(e.target.closest('.dock,#pausebtn'))return;
+  if(running){if(S.view==='frase'&&S.tapnext){goCP(real(cp+1));heardAt=performance.now();return}pause();return}
   if(!paused)return;
   if(d.moved&&S.view==='frase'){const dy=e.clientY-d.y0;goCP(dy<0?real(cp+1):Math.max(0,cp-1));return}
   if(d.moved){ // escolhe a palavra que ficou na linha de leitura

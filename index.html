@@ -87,7 +87,8 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
 .frase .ph{display:block;margin-bottom:.45em;transition:opacity .2s}
 .frase .ph.pend::after{display:none}
 .frase .ph.past{visibility:hidden}
-.frase .ph.next,.frase .ph.later{visibility:hidden}
+.frase .ph.later{visibility:hidden}
+.frase .ph.next{opacity:.42;font-size:.82em}
 .col.frase .view{-webkit-mask-image:none;mask-image:none}
 .col.frase{transition:height .15s}
 .frase .mark{display:none}
@@ -342,7 +343,12 @@ function fitPhrase(snap=true){
   const max=$('#prompter').clientHeight*S.boxh/100;
   el.style.fontSize='';let sc=1;
   while(el.offsetHeight+pad*2>max&&sc>.5){sc-=.04;el.style.fontSize=sc+'em'}
-  col.style.height=Math.ceil(el.offsetHeight+pad*1.6)+'px';
+  // prévia da próxima frase embaixo; se não couber inteira, ela esmaece no pé da moldura
+  let h=el.offsetHeight+pad*1.6;const nx=P[real(cp+1)],view=col.querySelector('.view');
+  view.style.webkitMaskImage=view.style.maskImage='';
+  if(nx&&nx!==P[cp]){const full=nx.el.offsetTop-el.offsetTop+nx.el.offsetHeight+pad*1.6;
+    if(full<=max)h=full;else{h=Math.max(h,max);const g=`linear-gradient(#000 ${el.offsetHeight+pad*1.3}px,transparent ${h}px)`;view.style.webkitMaskImage=g;view.style.maskImage=g}}
+  col.style.height=Math.ceil(h)+'px';
   target=el.offsetTop-READ();if(snap)y=target;
 }
 const nextCP=()=>{let n=cp+1;while(n<P.length&&P[n].m0<0)n++;if(n<P.length)setCP(n)};

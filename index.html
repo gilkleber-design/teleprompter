@@ -87,8 +87,9 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
 .frase .ph{display:block;margin-bottom:.45em;transition:opacity .2s}
 .frase .ph.pend::after{display:none}
 .frase .ph.past{visibility:hidden}
-.frase .ph.next{opacity:.5}
-.frase .ph.later{opacity:.22}
+.frase .ph.next,.frase .ph.later{visibility:hidden}
+.col.frase .view{-webkit-mask-image:none;mask-image:none}
+.col.frase{transition:height .15s}
 .frase .mark{display:none}
 .frase .w.done{color:#ffffffa8}
 .w{transition:color .25s}
@@ -172,7 +173,7 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
       <div class="group">
         <div class="row"><label for="width">Largura do texto</label><output id="o-width"></output><input type="range" id="width" data-k="width" min="22" max="100" step="1"></div>
         <div class="row"><label for="offset">Deslocamento lateral</label><output id="o-offset"></output><input type="range" id="offset" data-k="offset" min="-30" max="30" step="1"></div>
-        <div class="row"><label for="boxh">Altura da moldura</label><output id="o-boxh"></output><input type="range" id="boxh" data-k="boxh" min="12" max="95" step="1"></div>
+        <div class="row"><label for="boxh">Altura máxima da moldura</label><output id="o-boxh"></output><input type="range" id="boxh" data-k="boxh" min="12" max="95" step="1"></div>
         <div class="row"><label for="op">Fundo da moldura</label><output id="o-op"></output><input type="range" id="op" data-k="op" min="0" max="95" step="1"></div>
         <div class="row"><label for="readline">Distância do topo</label><output id="o-readline"></output><input type="range" id="readline" data-k="readline" min="2" max="60" step="1"></div>
         <div class="row"><label for="font">Tamanho da letra</label><output id="o-font"></output><input type="range" id="font" data-k="font" min="18" max="80" step="1"></div>
@@ -216,7 +217,7 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
       <div class="row"><label for="q-width">Largura</label><output id="oq-width"></output><input type="range" id="q-width" data-k="width" min="22" max="100" step="1"></div>
       <div class="row"><label for="q-font">Letra</label><output id="oq-font"></output><input type="range" id="q-font" data-k="font" min="18" max="80" step="1"></div>
       <div class="row"><label for="q-readline">Distância do topo</label><output id="oq-readline"></output><input type="range" id="q-readline" data-k="readline" min="2" max="60" step="1"></div>
-      <div class="row"><label for="q-boxh">Altura da moldura</label><output id="oq-boxh"></output><input type="range" id="q-boxh" data-k="boxh" min="12" max="95" step="1"></div>
+      <div class="row"><label for="q-boxh">Altura máxima</label><output id="oq-boxh"></output><input type="range" id="q-boxh" data-k="boxh" min="12" max="95" step="1"></div>
       <div class="row"><label for="q-op">Fundo</label><output id="oq-op"></output><input type="range" id="q-op" data-k="op" min="0" max="95" step="1"></div>
     </div>
     <p class="paused-tip" id="pausetip">Pausado. Arraste o texto ou toque numa palavra para recomeçar dali.</p>
@@ -280,7 +281,7 @@ $$('[data-k]').forEach(el=>{
     S[k]=el.type==='checkbox'?el.checked:(+el.value);
     $$('[data-k="'+k+'"]').forEach(o=>{if(o!==el){if(o.type==='checkbox')o.checked=S[k];else o.value=S[k]}});
     applyVars();save();if(k==='record')setMode(S.mode);
-    if(running||paused)requestAnimationFrame(()=>{measure();if(S.mode==='voz')target=targetFor(pos)});
+    if(running||paused)requestAnimationFrame(()=>{measure();if(S.view==='frase')fitPhrase();else if(S.mode==='voz')target=targetFor(pos)});
   });
 });
 const ta=$('#script');ta.value=S.text;
@@ -320,7 +321,7 @@ function build(){
     });
     close(true);
   });
-  $('#col').classList.toggle('frase',S.view==='frase');
+  $('#col').classList.toggle('frase',S.view==='frase');if(S.view!=='frase')$('#col').style.height='';
 }
 /* ---------- frase a frase ---------- */
 let cp=0,talk=0;
@@ -331,8 +332,18 @@ function setCP(i,snap=true){
   const nx=real(cp+1);
   P.forEach((p,k)=>{p.el.classList.toggle('past',k<cp);p.el.classList.toggle('now',k===cp);
     p.el.classList.toggle('next',k>cp&&k<=nx);p.el.classList.toggle('later',k>nx)});
-  target=P[cp].el.offsetTop-READ();if(snap)y=target;
+  fitPhrase(snap);
   if(changed&&textEl.animate)textEl.animate([{opacity:.45},{opacity:1}],{duration:160});
+}
+// a frase inteira sempre cabe: a moldura cresce até a altura máxima e, se ainda faltar, a letra diminui
+function fitPhrase(snap=true){
+  if(!P.length||!P[cp])return;
+  const col=$('#col'),el=P[cp].el,pad=S.font*.35;
+  const max=$('#prompter').clientHeight*S.boxh/100;
+  el.style.fontSize='';let sc=1;
+  while(el.offsetHeight+pad*2>max&&sc>.5){sc-=.04;el.style.fontSize=sc+'em'}
+  col.style.height=Math.ceil(el.offsetHeight+pad*1.6)+'px';
+  target=el.offsetTop-READ();if(snap)y=target;
 }
 const nextCP=()=>{let n=cp+1;while(n<P.length&&P[n].m0<0)n++;if(n<P.length)setCP(n)};
 const prevCP=()=>{let n=cp-1;while(n>0&&P[n].m0<0)n--;if(n>=0)setCP(n)};

@@ -108,7 +108,8 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
 .recpill{color:var(--rec);display:flex;align-items:center;gap:6px}
 .recpill::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--rec);animation:blink 1s steps(2) infinite}
 @keyframes blink{50%{opacity:.2}}
-#cam{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:fill;transform:scaleX(-1);z-index:0;background:#000;max-width:none}
+#cam{position:absolute;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none}
+#camc{position:absolute;inset:0;width:100%;height:100%;z-index:0;background:#000}
 .stage{z-index:1}
 
 .dock{position:absolute;left:0;right:0;bottom:0;z-index:6;padding:14px max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 14px) max(16px,env(safe-area-inset-left,0px));background:linear-gradient(transparent,#000e 30%);display:grid;gap:10px;justify-items:center}
@@ -201,7 +202,8 @@ input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;bac
       <div class="view"><div class="text" id="text"></div></div>
     </div>
   </div>
-  <video id="cam" playsinline muted autoplay hidden></video>
+  <video id="cam" playsinline muted autoplay></video>
+  <canvas id="camc" hidden></canvas>
   <button type="button" id="pausebtn" class="pausebtn" aria-label="Pausar" hidden><i></i><i></i></button>
   <div class="hud">
     <span class="state"><i class="dot" id="dot"></i><span id="statetxt">pronto</span></span>
@@ -334,11 +336,13 @@ function setCP(i,snap=true){
 }
 const nextCP=()=>{let n=cp+1;while(n<P.length&&P[n].m0<0)n++;if(n<P.length)setCP(n)};
 const prevCP=()=>{let n=cp-1;while(n>0&&P[n].m0<0)n--;if(n>=0)setCP(n)};
-function fitCam(){const v=$('#cam'),box=$('#prompter');if(!v.videoWidth||v.hidden)return;
-  const W0=box.clientWidth,H0=box.clientHeight,k=Math.max(W0/v.videoWidth,H0/v.videoHeight),w=v.videoWidth*k,h=v.videoHeight*k;
-  v.style.width=w+'px';v.style.height=h+'px';v.style.left=(W0-w)/2+'px';v.style.top=(H0-h)/2+'px'}
-['loadedmetadata','resize','playing'].forEach(ev=>$('#cam').addEventListener(ev,fitCam));
-addEventListener('resize',fitCam);setInterval(fitCam,1000);
+let camCtx=null;
+function drawCam(){const v=$('#cam'),c=$('#camc');if(c.hidden||!v.videoWidth)return;
+  const dpr=Math.min(2,devicePixelRatio||1),W=Math.round(c.clientWidth*dpr),H=Math.round(c.clientHeight*dpr);
+  if(!W||!H)return;if(c.width!==W||c.height!==H){c.width=W;c.height=H}
+  camCtx=camCtx||c.getContext('2d');
+  const vw=v.videoWidth,vh=v.videoHeight,k=Math.max(W/vw,H/vh),dw=vw*k,dh=vh*k;
+  camCtx.setTransform(-1,0,0,1,W,0);camCtx.drawImage(v,(W-dw)/2,(H-dh)/2,dw,dh)}
 let stageH=innerHeight;
 function measure(){stageH=$('#stage').clientHeight;W.forEach(w=>w.top=w.el.offsetTop)}
 addEventListener('resize',()=>{if(!$('#prompter').hidden){measure();if(S.mode==='voz')target=targetFor(pos)}});
@@ -511,6 +515,7 @@ function frame(t){
   const k=S.view==='frase'?1:S.mode==='voz'?Math.min(1,dt*5):Math.min(1,dt*14);
   y+=(target-y)*k;
   textEl.style.transform=`translate3d(0,${-y}px,0)`;
+  drawCam();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
@@ -534,7 +539,7 @@ $('#go').addEventListener('click',async()=>{
   $('#setup').hidden=true;$('#prompter').hidden=false;
   build();applyVars();measure();resetMarks();pos=0;
   y=target=targetFor(0);cp=-1;setPos(0);if(S.view==='frase')setCP(0);elapsed=0;$('#timer').textContent='0:00';
-  if(S.record&&S.preview){$('#cam').srcObject=stream;$('#cam').hidden=false;fitCam()}else $('#cam').hidden=true;
+  if(S.record&&S.preview){const v=$('#cam');v.srcObject=stream;v.play().catch(()=>{});$('#camc').hidden=false}else $('#camc').hidden=true;
   lockScreen();try{document.documentElement.requestFullscreen?.().catch(()=>{})}catch(e){}
   if(S.countdown){const c=$('#countdown');c.hidden=false;for(const n of [3,2,1]){c.textContent=n;await new Promise(r=>setTimeout(r,800))}c.hidden=true}
   if(S.record)startRecording();
@@ -559,7 +564,7 @@ function finish(){
   else release();
   recorder=null;
   if(modeBack){S.mode=modeBack;modeBack=null;setMode(S.mode)}
-  $('#cam').srcObject=null;wake&&wake.release&&wake.release();wake=null;
+  $('#cam').srcObject=null;$('#camc').hidden=true;wake&&wake.release&&wake.release();wake=null;
   try{document.fullscreenElement&&document.exitFullscreen()}catch(e){}
   $('#prompter').hidden=true;$('#setup').hidden=false;$('#dock').hidden=true;
 }
